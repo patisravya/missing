@@ -1,0 +1,36 @@
+# Node dependencies
+frontend/node_modules/
+node_modules/
+
+# Production build
+frontend/dist/
+dist/
+
+# Python cache & virtual environments
+__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# Databases & local uploads
+*.db
+backend/findtrace.db
+storage/evidence_frames/*.jpg
+storage/reference_photos/*.jpg
+storage/videos/*.mp4
+
+# Environment variables & secrets
+.env
+.env.local
+.DS_Store
+Thumbs.db
+
+# IDE & system
+.vscode/
+.idea/
+*.log
