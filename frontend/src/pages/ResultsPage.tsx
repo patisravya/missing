@@ -11,6 +11,8 @@ import {
   CheckCircle2, 
   Zap,
   UserCheck,
+  UserX,
+  XCircle,
   Terminal,
   Activity,
   ShieldAlert,
@@ -122,12 +124,14 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
                   Target Person: <strong className="text-slate-200">{caseData.person_name || 'Missing Person'}</strong> • Feeds Analyzed: {caseData.total_videos || 3} • Status:{' '}
                 </p>
                 {filteredCandidates.length > 0 ? (
-                  <span className="text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 text-[11px] font-bold px-2 py-0.5 rounded">
-                    Potential Candidate Detected ({filteredCandidates.length})
+                  <span className="inline-flex items-center gap-1.5 text-emerald-400 bg-emerald-950/80 border border-emerald-500/40 text-[11px] font-bold px-2.5 py-0.5 rounded">
+                    <UserCheck className="w-3.5 h-3.5" />
+                    <span>Potential Candidate Detected ({filteredCandidates.length})</span>
                   </span>
                 ) : (
-                  <span className="text-amber-400 bg-amber-950/80 border border-amber-500/40 text-[11px] font-bold px-2 py-0.5 rounded">
-                    No Reliable Candidate Found (0 Matches)
+                  <span className="inline-flex items-center gap-1.5 text-red-400 bg-red-950/90 border border-red-500/50 text-[11px] font-bold px-2.5 py-0.5 rounded">
+                    <UserX className="w-3.5 h-3.5" />
+                    <span>TARGET NOT FOUND (0 Matches in Footage)</span>
                   </span>
                 )}
               </div>
@@ -292,40 +296,47 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
           ))}
         </div>
       ) : (
-        /* No Reliable Candidate Found State */
-        <div className="bg-[#121824] border border-[#1e293b] rounded-2xl p-8 sm:p-12 text-center space-y-6 max-w-2xl mx-auto shadow-2xl">
-          <div className="w-20 h-20 rounded-2xl bg-amber-950/40 border-2 border-amber-500/50 flex items-center justify-center mx-auto text-amber-400 shadow-xl shadow-amber-950/50">
-            <AlertTriangle className="w-10 h-10" />
+        /* TARGET NOT FOUND State */
+        <div className="bg-[#121824] border-2 border-red-500/40 rounded-2xl p-8 sm:p-12 text-center space-y-6 max-w-2xl mx-auto shadow-2xl relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-red-950/20 via-transparent to-transparent pointer-events-none" />
+
+          <div className="w-20 h-20 rounded-2xl bg-red-950/60 border-2 border-red-500/60 flex items-center justify-center mx-auto text-red-400 shadow-xl shadow-red-950/50">
+            <UserX className="w-10 h-10" />
           </div>
 
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 bg-amber-950/80 border border-amber-500/40 text-amber-300 text-xs px-3 py-1 rounded-full font-bold">
-              <span>SCAN RESULT: NO RELIABLE CANDIDATE FOUND</span>
+          <div className="space-y-3">
+            <div className="inline-flex items-center gap-2 bg-red-950/90 border border-red-500/60 text-red-300 text-xs px-4 py-1.5 rounded-full font-bold uppercase tracking-wider shadow-lg">
+              <XCircle className="w-4 h-4 text-red-400" />
+              <span>SCAN RESULT: TARGET NOT FOUND</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-100 font-mono tracking-tight">
-              No Reliable Candidate in Processed Footage
+            <h2 className="text-2xl sm:text-3xl font-bold text-slate-100 font-mono tracking-tight">
+              Target Person Not Found in Footage
             </h2>
-            <p className="text-xs text-slate-400 max-w-lg mx-auto leading-relaxed">
-              The AI CCTV search pipeline scanned all processed video feeds and rejected false positive candidates. No track passed the multi-frame temporal Re-ID requirements at the configured {Math.round(customThreshold * 100)}% similarity cutoff.
+            <p className="text-xs sm:text-sm text-slate-300 max-w-lg mx-auto leading-relaxed">
+              The AI search pipeline analyzed all CCTV video feeds across keyframes. No matching person or appearance signature was identified above the configured <strong className="text-cyan-400">{Math.round(customThreshold * 100)}%</strong> similarity cutoff.
             </p>
           </div>
 
-          <div className="bg-[#161b22] p-4 rounded-xl text-xs text-slate-300 space-y-2 text-left border border-slate-800 font-mono">
-            <div className="flex justify-between border-b border-slate-800/80 pb-1.5">
+          <div className="bg-[#161b22] p-5 rounded-xl text-xs text-slate-300 space-y-2.5 text-left border border-slate-800 font-mono">
+            <div className="flex justify-between border-b border-slate-800/80 pb-2">
               <span className="text-slate-400">Target Searched:</span>
-              <span className="text-slate-100 font-semibold">{caseData.person_name || 'Missing Subject'}</span>
+              <span className="text-slate-100 font-bold">{caseData.person_name || 'Missing Subject'}</span>
             </div>
-            <div className="flex justify-between border-b border-slate-800/80 pb-1.5">
+            <div className="flex justify-between border-b border-slate-800/80 pb-2">
               <span className="text-slate-400">CCTV Streams Evaluated:</span>
-              <span className="text-cyan-400 font-semibold">{caseData.total_videos || 0} Feeds</span>
+              <span className="text-cyan-400 font-semibold">{caseData.total_videos || 0} Feeds Analyzed</span>
             </div>
-            <div className="flex justify-between border-b border-slate-800/80 pb-1.5">
-              <span className="text-slate-400">Frames Analyzed:</span>
+            <div className="flex justify-between border-b border-slate-800/80 pb-2">
+              <span className="text-slate-400">Total Frames Scanned:</span>
               <span className="text-slate-100">{(caseData.total_frames || 1420).toLocaleString()} Verified Frames</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-slate-400">Absence Disclaimer:</span>
-              <span className="text-amber-400 font-semibold">Absence does not establish non-presence.</span>
+            <div className="flex justify-between border-b border-slate-800/80 pb-2">
+              <span className="text-slate-400">Match Result:</span>
+              <span className="text-red-400 font-bold">0 Candidate Matches (Target Not Found)</span>
+            </div>
+            <div className="flex justify-between pt-0.5">
+              <span className="text-slate-400">Investigation Note:</span>
+              <span className="text-amber-400/90 text-[11px]">Absence in footage does not establish non-presence.</span>
             </div>
           </div>
 
@@ -336,7 +347,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
               className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg cursor-pointer"
             >
               <RefreshCw className="w-4 h-4" />
-              <span>Adjust Similarity Cutoff (50%)</span>
+              <span>Lower Sensitivity Threshold (50%)</span>
             </button>
             <button
               type="button"
@@ -344,7 +355,7 @@ export const ResultsPage: React.FC<ResultsPageProps> = ({
               className="flex items-center gap-2 bg-[#161b22] hover:bg-[#1f2937] border border-[#1e293b] text-slate-200 text-xs font-semibold px-4 py-2.5 rounded-xl cursor-pointer"
             >
               <Plus className="w-4 h-4 text-cyan-400" />
-              <span>Upload Additional Angles or Higher Quality Photo</span>
+              <span>Upload Additional Feeds or New Photo</span>
             </button>
           </div>
         </div>

@@ -212,10 +212,16 @@ export async function extractVideoCandidates(
         }
       } else {
         // Sample demo feeds simulation (e.g. CCTV-01, CCTV-03 sample feeds)
-        const trackId = `TRK-${vidIdx === 0 ? '027' : vidIdx === 1 ? '042' : '089'}`;
-        const simScore = vidIdx === 0 ? 0.88 : vidIdx === 1 ? 0.81 : 0.74;
+        // Check true similarity against the demo subject profile (Alexander Vance in Dark Blue jacket)
+        const demoFeedVector = generateDefaultTargetProfile();
+        const baseSimScore = calculatePerceptualSimilarity(refVector, demoFeedVector, true, faceBoostMode);
+        
+        // Feed 1 has full view, Feed 2 has side view, Feed 3 has unrelated person
+        const feedModifier = vidIdx === 0 ? 0.0 : vidIdx === 1 ? -0.07 : -0.35;
+        const simScore = parseFloat(Math.max(0.05, Math.min(0.96, baseSimScore + feedModifier)).toFixed(2));
 
         if (simScore >= similarityThreshold) {
+          const trackId = `TRK-${vidIdx === 0 ? '027' : vidIdx === 1 ? '042' : '089'}`;
           const candIndex = globalCandidateIndex;
           const band = simScore >= 0.75 ? 'High Similarity' : 'Medium Similarity';
           const validFrames = vidIdx === 0 ? 12 : vidIdx === 1 ? 8 : 6;
@@ -245,7 +251,7 @@ export async function extractVideoCandidates(
             score: 0.94,
             blurScore: 120.0,
             qualityScore: 0.92,
-            featureVector: generateDefaultTargetProfile()
+            featureVector: demoFeedVector
           };
 
           const stampedImage = drawAccurateHUDOverlay(
@@ -480,7 +486,7 @@ async function detectPersonAndFacesInCanvas(
     const data = imgData.data;
 
     let minX = w, maxX = 0, minY = h, maxY = 0;
-    let fgCount = 0;
+    let skinCount = 0;
     const step = 6;
 
     for (let y = Math.floor(h * 0.08); y < h * 0.92; y += step) {
@@ -490,9 +496,13 @@ async function detectPersonAndFacesInCanvas(
         const g = data[idx + 1];
         const b = data[idx + 2];
 
-        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
-        if (lum > 20 && lum < 240) {
-          fgCount++;
+        // Skin tone heuristic in RGB color space
+        const isSkin = r > 80 && g > 40 && b > 20 && 
+                       (Math.max(r, g, b) - Math.min(r, g, b) > 15) &&
+                       Math.abs(r - g) > 12 && r > g && r > b;
+
+        if (isSkin) {
+          skinCount++;
           if (x < minX) minX = x;
           if (x > maxX) maxX = x;
           if (y < minY) minY = y;
@@ -504,51 +514,36 @@ async function detectPersonAndFacesInCanvas(
     const fgW = maxX - minX;
     const fgH = maxY - minY;
 
-    if (fgW >= 35 && fgH >= 60) {
-      const detectedW = Math.max(50, Math.min(w * 0.70, fgW * 0.85));
-      const detectedH = Math.max(90, Math.min(h * 0.90, fgH * 0.90));
-      const detectedX = Math.max(5, Math.min(w - detectedW - 5, minX + (fgW - detectedW) / 2));
+    // Must have sufficient skin / head-torso cluster with vertical aspect ratio
+    if (skinCount >= 8 && fgW >= 25 && fgH >= 40) {
+      const detectedW = Math.max(45, Math.min(w * 0.60, fgW * 1.5));
+      const detectedH = Math.max(90, Math.min(h * 0.85, fgH * 2.8));
+      const detectedX = Math.max(5, Math.min(w - detectedW - 5, minX - (detectedW - fgW) / 2));
       const detectedY = Math.max(5, Math.min(h - detectedH - 5, minY));
 
       const blurScore = calculateBlurScore(ctx, Math.round(detectedX), Math.round(detectedY), Math.round(detectedW), Math.round(detectedH));
-      const featureVector = extractDualZoneFeatureVector(ctx, Math.round(detectedX), Math.round(detectedY), Math.round(detectedW), Math.round(detectedH));
+      if (blurScore > 25.0) {
+        const featureVector = extractDualZoneFeatureVector(ctx, Math.round(detectedX), Math.round(detectedY), Math.round(detectedW), Math.round(detectedH));
 
-      detected.push({
-        x: Math.round(detectedX),
-        y: Math.round(detectedY),
-        w: Math.round(detectedW),
-        h: Math.round(detectedH),
-        isFace: false,
-        score: 0.88,
-        blurScore,
-        qualityScore: 0.85,
-        featureVector
-      });
-      return detected;
+        detected.push({
+          x: Math.round(detectedX),
+          y: Math.round(detectedY),
+          w: Math.round(detectedW),
+          h: Math.round(detectedH),
+          isFace: false,
+          score: 0.86,
+          blurScore,
+          qualityScore: 0.82,
+          featureVector
+        });
+        return detected;
+      }
     }
   } catch (e) {
-    console.warn('Detection pass:', e);
+    console.warn('Detection pass error:', e);
   }
 
-  // Central frame fallback if foreground segmentation is uniform
-  const defW = Math.round(w * 0.25);
-  const defH = Math.round(h * 0.60);
-  const defX = Math.round((w - defW) / 2);
-  const defY = Math.round(h * 0.20);
-  const featureVector = extractDualZoneFeatureVector(ctx, defX, defY, defW, defH);
-
-  detected.push({
-    x: defX,
-    y: defY,
-    w: defW,
-    h: defH,
-    isFace: false,
-    score: 0.80,
-    blurScore: 100.0,
-    qualityScore: 0.80,
-    featureVector
-  });
-
+  // If no face or human silhouette is detected, return empty (Target/Person not present)
   return detected;
 }
 
@@ -733,20 +728,22 @@ function calculatePerceptualSimilarity(
     dot += vecRef[i] * vecDet[i];
   }
 
-  // Linear / calibrated mapping from dot product in [-1, 1] to [0.05, 0.98]
+  // Calibrated Re-ID cosine similarity mapping:
+  // Random / different persons typically have dot < 0.30 -> similarity < 0.40
+  // Matching candidates have dot >= 0.55 -> similarity >= 0.65
   let similarity: number;
-  if (dot >= 0.70) {
-    similarity = 0.85 + (dot - 0.70) * 0.40; // ~0.85 to 0.97
-  } else if (dot >= 0.40) {
-    similarity = 0.70 + (dot - 0.40) * 0.50; // ~0.70 to 0.85
-  } else if (dot >= 0.15) {
-    similarity = 0.50 + (dot - 0.15) * 0.80; // ~0.50 to 0.70
+  if (dot >= 0.75) {
+    similarity = 0.84 + (dot - 0.75) * 0.55; // 0.84 - 0.98
+  } else if (dot >= 0.50) {
+    similarity = 0.64 + (dot - 0.50) * 0.80; // 0.64 - 0.84
+  } else if (dot >= 0.25) {
+    similarity = 0.32 + (dot - 0.25) * 1.28; // 0.32 - 0.64
   } else {
-    similarity = Math.max(0.10, 0.25 + dot * 0.80); // < 0.50
+    similarity = Math.max(0.05, 0.10 + Math.max(0, dot) * 0.88); // 0.05 - 0.32
   }
 
   if (faceBoostMode && isFace) {
-    similarity = Math.min(0.97, similarity + 0.03);
+    similarity = Math.min(0.98, similarity + 0.03);
   }
 
   return parseFloat(Math.min(0.98, Math.max(0.05, similarity)).toFixed(2));
