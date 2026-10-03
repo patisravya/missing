@@ -150,34 +150,45 @@ export const ReportPreview: React.FC<ReportPreviewProps> = ({ caseData }) => {
           <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-wider border-b border-cyan-900/40 pb-1">
             3. Potential Candidate Matches Matrix
           </h3>
-          <div className="overflow-x-auto border border-[#1e293b] rounded-lg">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-[#121824] text-slate-400 uppercase border-b border-[#1e293b]">
-                <tr>
-                  <th className="p-3">Candidate</th>
-                  <th className="p-3">Track ID</th>
-                  <th className="p-3">Similarity</th>
-                  <th className="p-3">First Seen</th>
-                  <th className="p-3">Last Seen</th>
-                  <th className="p-3">Camera</th>
-                  <th className="p-3">Review Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#1e293b]">
-                {(caseData.candidates || []).map((cand) => (
-                  <tr key={cand.id} className="hover:bg-[#121824]/50">
-                    <td className="p-3 font-bold text-slate-200">{cand.candidate_code}</td>
-                    <td className="p-3 text-cyan-400">{cand.track_id}</td>
-                    <td className="p-3 text-emerald-400 font-bold">{Math.round(cand.similarity_score * 100)}%</td>
-                    <td className="p-3 text-slate-300">{cand.first_seen}</td>
-                    <td className="p-3 text-slate-300">{cand.last_seen}</td>
-                    <td className="p-3 text-slate-300">{cand.primary_camera_id}</td>
-                    <td className="p-3 text-amber-300 font-semibold">{cand.status}</td>
+          {(caseData.candidates && caseData.candidates.length > 0) ? (
+            <div className="overflow-x-auto border border-[#1e293b] rounded-lg">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-[#121824] text-slate-400 uppercase border-b border-[#1e293b]">
+                  <tr>
+                    <th className="p-3">Candidate</th>
+                    <th className="p-3">Track ID</th>
+                    <th className="p-3">Similarity</th>
+                    <th className="p-3">First Seen</th>
+                    <th className="p-3">Last Seen</th>
+                    <th className="p-3">Camera</th>
+                    <th className="p-3">Review Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-[#1e293b]">
+                  {caseData.candidates.map((cand) => (
+                    <tr key={cand.id} className="hover:bg-[#121824]/50">
+                      <td className="p-3 font-bold text-slate-200">{cand.candidate_code}</td>
+                      <td className="p-3 text-cyan-400">{cand.track_id}</td>
+                      <td className="p-3 text-emerald-400 font-bold">{Math.round(cand.similarity_score * 100)}%</td>
+                      <td className="p-3 text-slate-300">{cand.first_seen}</td>
+                      <td className="p-3 text-slate-300">{cand.last_seen}</td>
+                      <td className="p-3 text-slate-300">{cand.primary_camera_id}</td>
+                      <td className="p-3 text-amber-300 font-semibold">{cand.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-5 bg-[#121824] border border-[#1e293b] rounded-lg text-center space-y-2 font-mono">
+              <span className="text-red-400 font-bold text-xs bg-red-950/80 border border-red-500/40 px-3 py-1 rounded-full inline-block">
+                SCAN RESULT: PERSON NOT DETECTED IN CCTV FOOTAGE
+              </span>
+              <p className="text-xs text-slate-400">
+                0 candidates met the visual re-identification similarity threshold across analyzed camera streams.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="p-4 bg-amber-950/40 border border-amber-500/40 rounded-xl space-y-2 text-xs text-amber-200/90 print:bg-slate-100 print:text-black">

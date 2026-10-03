@@ -3,19 +3,19 @@ import { CheckCircle2, Loader2, Circle, Cpu, Scan, Layers, Activity, ShieldCheck
 
 interface ProcessingAnimationProps {
   caseNumber: string;
+  candidateCount?: number;
   onComplete: () => void;
 }
 
-export const ProcessingAnimation: React.FC<ProcessingAnimationProps> = ({ caseNumber, onComplete }) => {
+export const ProcessingAnimation: React.FC<ProcessingAnimationProps> = ({ caseNumber, candidateCount = 0, onComplete }) => {
   const [progress, setProgress] = useState(15);
   const [framesAnalyzed, setFramesAnalyzed] = useState(1240);
-  const [peopleDetected, setPeopleDetected] = useState(48);
-  const [candidatesFound, setCandidatesFound] = useState(2);
+  const [peopleDetected, setPeopleDetected] = useState(12);
   const [activeStep, setActiveStep] = useState(4);
   const [logs, setLogs] = useState<string[]>([
     '10:32:10 — Case initialized: ' + caseNumber,
     '10:32:11 — Reference image visual embedding extracted (128-dim)',
-    '10:32:12 — CCTV video feeds validated: 3 streams loaded',
+    '10:32:12 — CCTV video feeds validated: multi-stream ingestion active',
     '10:32:14 — Frame extraction pipeline active (Sampling: Every 5 frames)',
   ]);
 
@@ -30,30 +30,36 @@ export const ProcessingAnimation: React.FC<ProcessingAnimationProps> = ({ caseNu
 
         const next = prev + 5;
         setFramesAnalyzed((f) => f + 420);
-        setPeopleDetected((p) => p + Math.floor(Math.random() * 15 + 5));
+        setPeopleDetected((p) => p + Math.floor(Math.random() * 8 + 2));
 
         if (next > 40 && activeStep < 5) {
           setActiveStep(5);
-          setLogs((l) => [...l, `10:32:${Math.floor(next/2)} — Person Tracking active across frames`]);
+          setLogs((l) => [...l, `10:32:${Math.floor(next/2)} — Person tracking & bounding box analyzer active`]);
         }
         if (next > 70 && activeStep < 6) {
           setActiveStep(6);
-          setCandidatesFound(4);
           setLogs((l) => [...l, `10:32:${Math.floor(next/2)} — Visual Re-ID similarity matching calculated`]);
-          setLogs((l) => [...l, `10:32:${Math.floor(next/2)+1} — Potential Candidate #01 added (Sim: 87%)`]);
+          if (candidateCount > 0) {
+            setLogs((l) => [...l, `10:32:${Math.floor(next/2)+1} — Positive appearance correlation identified (${candidateCount} candidate${candidateCount > 1 ? 's' : ''})`]);
+          } else {
+            setLogs((l) => [...l, `10:32:${Math.floor(next/2)+1} — No correlation above threshold detected in current window`]);
+          }
         }
         if (next > 90 && activeStep < 7) {
           setActiveStep(7);
-          setCandidatesFound(5);
-          setLogs((l) => [...l, `10:32:${Math.floor(next/2)+2} — Evidence bounding boxes and timeline generated`]);
+          if (candidateCount > 0) {
+            setLogs((l) => [...l, `10:32:${Math.floor(next/2)+2} — Evidence timeline and verified frame stamps compiled`]);
+          } else {
+            setLogs((l) => [...l, `10:32:${Math.floor(next/2)+2} — Search finalized: Target individual not present in analyzed feeds`]);
+          }
         }
 
         return next;
       });
-    }, 350);
+    }, 320);
 
     return () => clearInterval(timer);
-  }, [activeStep, onComplete, caseNumber]);
+  }, [activeStep, onComplete, caseNumber, candidateCount]);
 
   const steps = [
     { id: 1, label: 'Reference Image', status: 'done' },
@@ -134,7 +140,7 @@ export const ProcessingAnimation: React.FC<ProcessingAnimationProps> = ({ caseNu
             </div>
             <div className="bg-[#161b22] p-2.5 rounded-lg border border-slate-800">
               <p className="text-[10px] font-mono text-slate-400 uppercase">Candidates Found</p>
-              <p className="text-lg font-bold font-mono text-cyan-400">{candidatesFound}</p>
+              <p className={`text-lg font-bold font-mono ${candidateCount > 0 ? 'text-cyan-400' : 'text-slate-400'}`}>{candidateCount}</p>
             </div>
           </div>
 

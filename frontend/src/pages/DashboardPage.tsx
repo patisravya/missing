@@ -171,8 +171,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <tr key={c.id} className="hover:bg-[#161b22]/50 transition-colors">
                   <td className="p-3 font-bold text-cyan-400">{c.case_number}</td>
                   <td className="p-3 font-semibold text-slate-200">{c.person_name || 'Alexander Vance'}</td>
-                  <td className="p-3 text-slate-300">{c.total_videos || 3} Feeds</td>
-                  <td className="p-3 font-bold text-slate-100">{c.potential_matches_count || 5} Candidates</td>
+                  <td className="p-3 text-slate-300">{c.total_videos || 0} Feeds</td>
+                  <td className="p-3 font-bold">
+                    {(c.potential_matches_count ?? c.candidates?.length ?? 0) > 0 ? (
+                      <span className="text-cyan-400">{c.potential_matches_count ?? c.candidates?.length} Candidates</span>
+                    ) : (
+                      <span className="text-red-400 text-[11px] font-semibold">0 Matches (Not Found)</span>
+                    )}
+                  </td>
                   <td className="p-3">{getStatusBadge(c.status)}</td>
                   <td className="p-3 text-slate-400">2026-09-29</td>
                   <td className="p-3 text-right">

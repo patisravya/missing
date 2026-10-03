@@ -79,12 +79,28 @@ export const HistoryPage: React.FC<HistoryPageProps> = ({ cases, onSelectCase })
                 <td className="p-3.5 font-bold text-cyan-400">{c.case_number}</td>
                 <td className="p-3.5 font-semibold text-slate-200">{c.case_name}</td>
                 <td className="p-3.5 text-slate-300">{c.person_name || 'N/A'}</td>
-                <td className="p-3.5 text-slate-400">{c.total_videos || 3} Feeds</td>
-                <td className="p-3.5 font-bold text-slate-100">{c.potential_matches_count || 5} Matches</td>
+                <td className="p-3.5 text-slate-400">{c.total_videos || 0} Feeds</td>
+                <td className="p-3.5 font-bold">
+                  {(c.potential_matches_count ?? c.candidates?.length ?? 0) > 0 ? (
+                    <span className="text-cyan-400">{c.potential_matches_count ?? c.candidates?.length} Matches</span>
+                  ) : (
+                    <span className="text-red-400 text-[11px] font-semibold">0 Matches (Not Found)</span>
+                  )}
+                </td>
                 <td className="p-3.5">
-                  <span className="bg-blue-950 text-cyan-400 border border-blue-800/40 px-2 py-0.5 rounded text-[11px]">
-                    {c.status}
-                  </span>
+                  {c.status === 'no_candidate_found' ? (
+                    <span className="bg-red-950/80 text-red-400 border border-red-800/40 px-2 py-0.5 rounded text-[11px]">
+                      Not Found
+                    </span>
+                  ) : c.status === 'review_required' ? (
+                    <span className="bg-amber-950/80 text-amber-300 border border-amber-800/40 px-2 py-0.5 rounded text-[11px]">
+                      Review Required
+                    </span>
+                  ) : (
+                    <span className="bg-blue-950 text-cyan-400 border border-blue-800/40 px-2 py-0.5 rounded text-[11px]">
+                      {c.status}
+                    </span>
+                  )}
                 </td>
                 <td className="p-3.5 text-right">
                   <button
