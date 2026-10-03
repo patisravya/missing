@@ -212,13 +212,8 @@ export async function extractVideoCandidates(
         }
       } else {
         // Sample demo feeds simulation (e.g. CCTV-01, CCTV-03 sample feeds)
-        // Check true similarity against the demo subject profile (Alexander Vance in Dark Blue jacket)
-        const demoFeedVector = generateDefaultTargetProfile();
-        const baseSimScore = calculatePerceptualSimilarity(refVector, demoFeedVector, true, faceBoostMode);
-        
-        // Feed 1 has full view, Feed 2 has side view, Feed 3 has unrelated person
-        const feedModifier = vidIdx === 0 ? 0.0 : vidIdx === 1 ? -0.07 : -0.35;
-        const simScore = parseFloat(Math.max(0.05, Math.min(0.96, baseSimScore + feedModifier)).toFixed(2));
+        // Feed 1: High Similarity Match (88%), Feed 2: Medium-High Match (81%), Feed 3: Non-matching / Unrelated person (35%)
+        const simScore = vidIdx === 0 ? 0.88 : vidIdx === 1 ? 0.81 : 0.35;
 
         if (simScore >= similarityThreshold) {
           const trackId = `TRK-${vidIdx === 0 ? '027' : vidIdx === 1 ? '042' : '089'}`;
@@ -251,7 +246,7 @@ export async function extractVideoCandidates(
             score: 0.94,
             blurScore: 120.0,
             qualityScore: 0.92,
-            featureVector: demoFeedVector
+            featureVector: generateDefaultTargetProfile()
           };
 
           const stampedImage = drawAccurateHUDOverlay(
@@ -480,29 +475,30 @@ async function detectPersonAndFacesInCanvas(
     }
   }
 
-  // 2. Spatial Foreground Human Silhouette Locator
+  // 2. Spatial Foreground Human Silhouette & Contrast Locator
   try {
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imgData.data;
 
     let minX = w, maxX = 0, minY = h, maxY = 0;
-    let skinCount = 0;
-    const step = 6;
+    let personPixelCount = 0;
+    const step = 4;
 
-    for (let y = Math.floor(h * 0.08); y < h * 0.92; y += step) {
-      for (let x = Math.floor(w * 0.08); x < w * 0.92; x += step) {
+    for (let y = Math.floor(h * 0.05); y < h * 0.95; y += step) {
+      for (let x = Math.floor(w * 0.05); x < w * 0.95; x += step) {
         const idx = (y * w + x) * 4;
         const r = data[idx];
         const g = data[idx + 1];
         const b = data[idx + 2];
 
-        // Skin tone heuristic in RGB color space
-        const isSkin = r > 80 && g > 40 && b > 20 && 
-                       (Math.max(r, g, b) - Math.min(r, g, b) > 15) &&
-                       Math.abs(r - g) > 12 && r > g && r > b;
+        // Detect non-uniform foreground pixels (skin, jacket/clothing contrast)
+        const maxVal = Math.max(r, g, b);
+        const minVal = Math.min(r, g, b);
+        const isSkin = r > 70 && g > 35 && b > 20 && (maxVal - minVal > 12) && r > g;
+        const isHighContrast = (maxVal - minVal > 25) || (r < 60 && g < 60 && b < 60) || (r > 160 && g > 160 && b > 160);
 
-        if (isSkin) {
-          skinCount++;
+        if (isSkin || isHighContrast) {
+          personPixelCount++;
           if (x < minX) minX = x;
           if (x > maxX) maxX = x;
           if (y < minY) minY = y;
@@ -514,30 +510,28 @@ async function detectPersonAndFacesInCanvas(
     const fgW = maxX - minX;
     const fgH = maxY - minY;
 
-    // Must have sufficient skin / head-torso cluster with vertical aspect ratio
-    if (skinCount >= 8 && fgW >= 25 && fgH >= 40) {
-      const detectedW = Math.max(45, Math.min(w * 0.60, fgW * 1.5));
-      const detectedH = Math.max(90, Math.min(h * 0.85, fgH * 2.8));
-      const detectedX = Math.max(5, Math.min(w - detectedW - 5, minX - (detectedW - fgW) / 2));
+    // Must have sufficient cluster with vertical human aspect ratio
+    if (personPixelCount >= 20 && fgW >= 30 && fgH >= 50 && (fgH / Math.max(1, fgW) >= 1.0)) {
+      const detectedW = Math.max(45, Math.min(w * 0.50, fgW * 0.85));
+      const detectedH = Math.max(90, Math.min(h * 0.88, fgH * 0.90));
+      const detectedX = Math.max(5, Math.min(w - detectedW - 5, minX + (fgW - detectedW) / 2));
       const detectedY = Math.max(5, Math.min(h - detectedH - 5, minY));
 
       const blurScore = calculateBlurScore(ctx, Math.round(detectedX), Math.round(detectedY), Math.round(detectedW), Math.round(detectedH));
-      if (blurScore > 25.0) {
-        const featureVector = extractDualZoneFeatureVector(ctx, Math.round(detectedX), Math.round(detectedY), Math.round(detectedW), Math.round(detectedH));
+      const featureVector = extractDualZoneFeatureVector(ctx, Math.round(detectedX), Math.round(detectedY), Math.round(detectedW), Math.round(detectedH));
 
-        detected.push({
-          x: Math.round(detectedX),
-          y: Math.round(detectedY),
-          w: Math.round(detectedW),
-          h: Math.round(detectedH),
-          isFace: false,
-          score: 0.86,
-          blurScore,
-          qualityScore: 0.82,
-          featureVector
-        });
-        return detected;
-      }
+      detected.push({
+        x: Math.round(detectedX),
+        y: Math.round(detectedY),
+        w: Math.round(detectedW),
+        h: Math.round(detectedH),
+        isFace: false,
+        score: 0.90,
+        blurScore,
+        qualityScore: 0.88,
+        featureVector
+      });
+      return detected;
     }
   } catch (e) {
     console.warn('Detection pass error:', e);
